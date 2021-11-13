@@ -55,29 +55,38 @@ public class ProducerConfiguration {
 
     @PostConstruct
     private void onStartup() {
+        nonBlockingOldFashionProducerWithCallback();
+        nonBlockingProducerWithCallback();
+        blockingProducer();
+    }
+
+    public void nonBlockingOldFashionProducerWithCallback() {
+        System.out.println("Old fashion producer non blocking for thread: " + Thread.currentThread().getId());
         ListenableFuture<SendResult<String, String>> future = kafkaTemplate()
                 .send("tmp-topic", "something");
 
         future.addCallback(new ListenableFutureCallback<>() {
             @Override
             public void onFailure(Throwable ex) {
-                System.out.println("Failed to send a message!");
+                System.out.println("Failure for old fashion producer, thread: " + + Thread.currentThread().getId());
             }
 
             @Override
             public void onSuccess(SendResult<String, String> result) {
-                System.out.println("Sucessfully sent a message!");
+                System.out.println("Msg sent for old fashion producer, thread: " + + Thread.currentThread().getId());
             }
         });
+    }
 
+    public void nonBlockingProducerWithCallback() {
         ListenableFuture<SendResult<String, String>> nextFuture = kafkaTemplate()
                 .send("tmp-topic", "something");
-
-        future.addCallback(new KafkaSendCallback<>() {
+        System.out.println("With listanable future: " + Thread.currentThread().getId());
+        nextFuture.addCallback(new KafkaSendCallback<>() {
 
             @Override
             public void onSuccess(SendResult<String, String> result) {
-                System.out.println("Sucessfully sent a message!");
+                System.out.println("Sucessfully sent a message for: " + Thread.currentThread().getId());
             }
 
             @Override
@@ -87,26 +96,22 @@ public class ProducerConfiguration {
             }
 
         });
-
-        sendToKafka();
     }
 
-    public void sendToKafka() {
+    public void blockingProducer() {
         final ProducerRecord<String, String> record = new ProducerRecord<>("tmp-topic",
                 "key", "value");
-
-
+        System.out.println("Blocking send with: " + Thread.currentThread().getId());
         try {
             kafkaTemplate().send(record).get(10, TimeUnit.SECONDS);
             kafkaTemplate().flush();
-            System.out.println("Succesfully sent!");
-//            handleSuccess(data);
+            System.out.println("Sucessfully sent a message for: " + Thread.currentThread().getId());
         }
         catch (ExecutionException e) {
-//            handleFailure(data, record, e.getCause());
+            System.out.println("Exception happened for bloking producer, thread: " + Thread.currentThread().getId());
         }
         catch (TimeoutException | InterruptedException e) {
-//            handleFailure(data, record, e);
+            System.out.println("Timeout happened for blocking producer, thread: " + Thread.currentThread().getId());
         }
     }
 }
